@@ -1,0 +1,236 @@
+[gd_scene load_steps=11 format=3 uid="uid://b788d78j3obc5"]
+
+[ext_resource type="Texture2D" uid="uid://bqjmqd2el1edn" path="res://assets/assets/gun_sprites.png" id="1_wbx47"]
+[ext_resource type="AudioStream" uid="uid://d1aorc0f4dx0" path="res://assets/assets/revolver_shot1.wav" id="2_gs8qq"]
+
+[sub_resource type="GDScript" id="GDScript_juxpq"]
+script/source = "extends CharacterBody3D
+
+@onready var animater_sprite_2d = $CanvasLayer/gunbase/AnimatedSprite2D
+@onready var raycast3d = $RayCast3D
+@onready var shootsound = $shootsound
+const SPEED = 5.0
+const MOUSE_SENS = 0.5
+var can_shoot = true
+var dead = false
+
+func _ready():
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	animater_sprite_2d.animation_finished.connect(shoot_anim_done)
+	$CanvasLayer/deathscreen/Panel/Button.button_up.connect(restart)
+
+
+func _input(event):
+	if dead :
+		return
+	if event is InputEventMouseMotion :
+		rotation_degrees.y -= event.relative.x * MOUSE_SENS
+
+
+func _process(delta):
+	if Input.is_action_pressed(\"exit\") :
+		get_tree().quit()
+	if Input.is_action_just_pressed(\"restart\") :
+		restart()
+	if dead : return
+	if Input.is_action_just_pressed(\"shoot\") :
+		shoot()
+
+
+
+
+func _physics_process(delta):
+	if dead : 
+		return
+	var input_dir = Input.get_vector(\"move_left\", \"move_right\", \"move_forward\", \"move_backward\")
+	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if direction:
+		velocity.x = direction.x * SPEED
+		velocity.z = direction.z * SPEED
+	else:
+		velocity.x = move_toward(velocity.x, 0, SPEED)
+		velocity.z = move_toward(velocity.z, 0, SPEED)
+
+	move_and_slide()
+
+func restart() :
+	get_tree().reload_current_scene()
+	
+
+func shoot() :
+	if !can_shoot :
+		return
+	can_shoot = false
+	animater_sprite_2d.play(\"shoot\")
+	shootsound.play()
+	if raycast3d.is_colliding() and raycast3d.get_collider().has_method(\"kill\") :
+		raycast3d.get_collider().kill()
+
+func shoot_anim_done() :
+	can_shoot = true
+
+func kill() :
+	dead = true
+	$CanvasLayer/deathscreen.show()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+"
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wbc8f"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p6lij"]
+atlas = ExtResource("1_wbx47")
+region = Rect2(0, 0, 512, 512)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jluwe"]
+atlas = ExtResource("1_wbx47")
+region = Rect2(512, 0, 512, 512)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_l3snx"]
+atlas = ExtResource("1_wbx47")
+region = Rect2(1024, 0, 512, 512)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4rfaa"]
+atlas = ExtResource("1_wbx47")
+region = Rect2(1536, 0, 512, 512)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jujhp"]
+atlas = ExtResource("1_wbx47")
+region = Rect2(0, 0, 512, 512)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_qdul3"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p6lij")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jluwe")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_l3snx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4rfaa")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jujhp")
+}],
+"loop": false,
+"name": &"shoot",
+"speed": 8.0
+}]
+
+[node name="player" type="CharacterBody3D" groups=["player"]]
+collision_layer = 2
+collision_mask = 3
+script = SubResource("GDScript_juxpq")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_wbc8f")
+
+[node name="RayCast3D" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0500705, 1.46124, 0)
+target_position = Vector3(0, 0, -1000)
+collision_mask = 3
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="gunbase" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -20.0
+offset_top = -40.0
+offset_right = 20.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="CanvasLayer/gunbase"]
+position = Vector2(300, -73)
+scale = Vector2(0.429688, 0.429688)
+sprite_frames = SubResource("SpriteFrames_qdul3")
+animation = &"shoot"
+frame = 3
+frame_progress = 0.809532
+
+[node name="crosshair" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -6.0
+offset_right = 6.0
+offset_bottom = 6.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="deathscreen" type="Control" parent="CanvasLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="CanvasLayer/deathscreen"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -71.0
+offset_top = -42.0
+offset_right = 71.0
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/deathscreen/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -38.5
+offset_top = -25.0
+offset_right = 38.5
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "You dead!"
+
+[node name="Button" type="Button" parent="CanvasLayer/deathscreen/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -19.0
+offset_top = 11.0
+offset_right = 23.0
+offset_bottom = 33.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "restart"
+
+[node name="shootsound" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("2_gs8qq")
+bus = &"sfx"
